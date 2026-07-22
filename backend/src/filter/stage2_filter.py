@@ -16,16 +16,16 @@ class Stage2Filter:
     """
 
     def __init__(
-    	self,
-    	llm_client: AsyncLLMClient,
-    	cache_manager: CacheManager,
-    	html_crawler: ArxivHTMLCrawler,
-    	threshold: float = 0.7,
-    	temperature: float = 0.1,
-    	max_text_chars: int = 40000,
-    	custom_fields: list[dict[str, str]] | None = None,
-    	config_hash: str | None = None,
-	):
+        self,
+        llm_client: AsyncLLMClient,
+        cache_manager: CacheManager,
+        html_crawler: ArxivHTMLCrawler,
+        threshold: float = 0.7,
+        temperature: float = 0.1,
+        max_text_chars: int = 40000,
+        custom_fields: list[dict[str, str]] | None = None,
+        config_hash: str | None = None,
+    ):
         """
         Initialize Stage 2 filter.
 
@@ -83,104 +83,104 @@ class Stage2Filter:
 
 
         # Evaluate uncached papers in parallel
-			if uncached_papers:
-			    # 1. Fetch full paper HTML
-			    paper_ids = [paper["id"] for paper in uncached_papers]
-			    html_results = await self.html_crawler.fetch_batch(paper_ids)
+		if uncached_papers:
+			# 1. Fetch full paper HTML
+			paper_ids = [paper["id"] for paper in uncached_papers]
+			html_results = await self.html_crawler.fetch_batch(paper_ids)
 			
-			    # 2. Extract cleaned full text
-			    papers_with_text = []
+			# 2. Extract cleaned full text
+			papers_with_text = []
 			
-			    for paper in uncached_papers:
-			        html = html_results.get(paper["id"])
+			for paper in uncached_papers:
+			    html = html_results.get(paper["id"])
 	
-					if html:
-					    # Cache raw HTML on the paper object for reuse by Stage 3.
-					    # JSONExporter only exports known paper fields, so this will not
-					    # be included in digest.json.
-					    paper["_full_html"] = html
+				if html:
+					# Cache raw HTML on the paper object for reuse by Stage 3.
+					# JSONExporter only exports known paper fields, so this will not
+					# be included in digest.json.
+					paper["_full_html"] = html
 					
-					    cleaner = ArxivHtmlCleaner(
-					        max_chars=self.max_text_chars,
-					        arxiv_id=paper["id"],
-					    )
-					    full_text = cleaner.clean(html)
-					else:
-					    logger.warning(
-					        f"Stage 2: HTML unavailable for {paper['id']}, "
-					        "falling back to abstract"
-					    )
-					    full_text = paper["abstract"]
-			        papers_with_text.append((paper, full_text))
+					cleaner = ArxivHtmlCleaner(
+					    max_chars=self.max_text_chars,
+					    arxiv_id=paper["id"],
+					)
+					full_text = cleaner.clean(html)
+				else:
+					logger.warning(
+					     f"Stage 2: HTML unavailable for {paper['id']}, "
+					     "falling back to abstract"
+					  )
+					full_text = paper["abstract"]
+			    papers_with_text.append((paper, full_text))
 			
-			    # 3. Build Stage 2 LLM messages using full paper text
-			    batch_messages = [
-			        self.llm_client.build_stage2_messages(
-			            title=paper["title"],
-			            authors=paper["authors"],
-			            categories=paper["categories"],
-			            abstract=paper["abstract"],
-			            full_text=full_text,
-			            user_prompt=user_prompt,
-			            custom_fields=self.custom_fields,
-			        )
-			        for paper, full_text in papers_with_text
-			    ]
-			
-			    # 4. Call LLM in parallel
-			    results = await self.llm_client.complete_batch(
-			        batch_messages,
-			        Stage2Result,
-			        temperature=self.temperature,
+			# 3. Build Stage 2 LLM messages using full paper text
+			batch_messages = [
+			    self.llm_client.build_stage2_messages(
+			        title=paper["title"],
+			        authors=paper["authors"],
+			        categories=paper["categories"],
+			        abstract=paper["abstract"],
+			        full_text=full_text,
+			        user_prompt=user_prompt,
+			        custom_fields=self.custom_fields,
 			    )
+			    for paper, full_text in papers_with_text
+			]
 			
-			    # 5. Convert results to dictionaries and cache them
-			    evaluated_results = []
+			# 4. Call LLM in parallel
+			results = await self.llm_client.complete_batch(
+			    batch_messages,
+			    Stage2Result,
+			    temperature=self.temperature,
+			)
 			
-			    for (paper, _), messages, result in zip(
-			        papers_with_text,
-			        batch_messages,
-			        results,
-			        strict=True,
-			    ):
-			        if result is None:
-			            logger.warning(
-			                f"Stage 2: Paper {paper['id']} failed LLM call, "
-			                "marking as not passed"
-			            )
+			# 5. Convert results to dictionaries and cache them
+			evaluated_results = []
 			
-			            result_dict = {
-			                "pass_filter": False,
-			                "score": 0.0,
-			                "reasoning": "LLM call failed",
-			                "custom_fields": {},
-			                "messages": messages,
-			                "usage": None,
-			                "estimated_cost": None,
-			                "estimated_cost_currency": None,
-			            }
-			        else:
-			            result_obj, usage, cost_info = result
-			            result_dict = prepare_result_with_conversation(
-			                result_obj,
-			                self.threshold,
-			                messages,
-			                usage,
-			                cost_info,
-			            )
+			for (paper, _), messages, result in zip(
+			    papers_with_text,
+			    batch_messages,
+			    results,
+			    strict=True,
+			):
+			    if result is None:
+			        logger.warning(
+			              f"Stage 2: Paper {paper['id']} failed LLM call, "
+			              "marking as not passed"
+			         )
 			
-			        self.cache_manager.set(
-			            2,
-			            paper["id"],
-			            result_dict,
-			            self.config_hash,
+			         result_dict = {
+						 "pass_filter": False,
+						 "score": 0.0,
+						 "reasoning": "LLM call failed",
+						 "custom_fields": {},
+						 "messages": messages,
+						 "usage": None,
+						 "estimated_cost": None,
+						 "estimated_cost_currency": None,
+			        }
+			    else:
+			        result_obj, usage, cost_info = result
+			        result_dict = prepare_result_with_conversation(
+			            result_obj,
+			            self.threshold,
+			            messages,
+			            usage,
+			            cost_info,
 			        )
-			        evaluated_results.append((paper, result_dict))
 			
-			    # 6. Combine cached and newly evaluated results
-			    all_results = cached_results + evaluated_results
-			else:
-			    all_results = cached_results
+			    self.cache_manager.set(
+			        2,
+			        paper["id"],
+			        result_dict,
+			        self.config_hash,
+			    )
+			    evaluated_results.append((paper, result_dict))
+			
+			# 6. Combine cached and newly evaluated results
+			all_results = cached_results + evaluated_results
+		else:
+			all_results = cached_results
 
        
 
