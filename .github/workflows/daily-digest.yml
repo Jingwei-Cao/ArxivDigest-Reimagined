@@ -2,7 +2,6 @@ name: Generate Daily Digest
 
 on:
   schedule:
-    # Run at 00:00 AM UTC every day (08:00 AM Beijing Time)
     - cron: "50 9 * * 1-5"
       timezone: "Asia/Shanghai"
   workflow_dispatch: # Allow manual trigger
