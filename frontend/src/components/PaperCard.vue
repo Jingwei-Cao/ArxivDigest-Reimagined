@@ -43,9 +43,10 @@ function toggleAbstract() {
 
 // Custom fields for stage 3
 const customFields = computed(() => {
-    if (isStage3.value && props.paper.stage3?.custom_fields) {
-        return Object.entries(props.paper.stage3.custom_fields);
+    if (mainResult.value.custom_fields) {
+        return Object.entries(mainResult.value.custom_fields);
     }
+
     return [];
 });
 </script>
