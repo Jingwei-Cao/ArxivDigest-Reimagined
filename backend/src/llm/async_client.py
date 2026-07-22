@@ -232,39 +232,39 @@ Your task is to determine if a paper is relevant based on its metadata and abstr
 Provide a detailed assessment with a relevance score and reasoning."""
         custom_fields_prompt = ""
 
-    if custom_fields:
-        fields_list = []
-
-        for field in custom_fields:
-            field_name = field.get("name", "")
-            field_desc = field.get("description", "")
-
-            if field_name:
-                fields_list.append(f"- {field_name}: {field_desc}")
-
-        if fields_list:
-            custom_fields_prompt = (
-            "\n\nExtract the following fields using only information "
-            "available in the title and abstract:\n"
-            + "\n".join(fields_list)
-            + "\n\nDo not infer or invent information that is not present "
-            "in the title or abstract."
-        )
+        if custom_fields:
+            fields_list = []
+    
+            for field in custom_fields:
+                field_name = field.get("name", "")
+                field_desc = field.get("description", "")
+    
+                if field_name:
+                    fields_list.append(f"- {field_name}: {field_desc}")
+    
+            if fields_list:
+                custom_fields_prompt = (
+                "\n\nExtract the following fields using only information "
+                "available in the title and abstract:\n"
+                + "\n".join(fields_list)
+                + "\n\nDo not infer or invent information that is not present "
+                "in the title or abstract."
+            )
 
         user_message = f"""User's interests: {user_prompt}
 
-Paper Information:
-- Title: {title}
-- Authors: {", ".join(authors)}
-- Categories: {", ".join(categories)}
-- Abstract: {abstract}
-Full Paper Content:
-{full_text}
-
-Evaluate this paper's relevance to the user's interests.
-
-Extract the requested custom fields using the full paper content.
-{custom_fields_prompt}"""
+        Paper Information:
+        - Title: {title}
+        - Authors: {", ".join(authors)}
+        - Categories: {", ".join(categories)}
+        - Abstract: {abstract}
+        Full Paper Content:
+        {full_text}
+        
+        Evaluate this paper's relevance to the user's interests.
+        
+        Extract the requested custom fields using the full paper content.
+        {custom_fields_prompt}"""
         return [
             {"role": "system", "content": system_message},
             {"role": "user", "content": user_message},
