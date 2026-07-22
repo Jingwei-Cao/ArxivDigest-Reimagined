@@ -16,16 +16,16 @@ class Stage2Filter:
     """
 
     def __init__(
-        self,
-        llm_client: AsyncLLMClient,
-        cache_manager: CacheManager,
-        threshold: float = 0.7,
-        temperature: float = 0.1,
-        html_crawler: ArxivHTMLCrawler,
-        max_text_chars: int = 40000,
-        custom_fields: list[dict[str, str]] | None = None,
-        config_hash: str | None = None,
-    ):
+    	self,
+    	llm_client: AsyncLLMClient,
+    	cache_manager: CacheManager,
+    	html_crawler: ArxivHTMLCrawler,
+    	threshold: float = 0.7,
+    	temperature: float = 0.1,
+    	max_text_chars: int = 40000,
+    	custom_fields: list[dict[str, str]] | None = None,
+    	config_hash: str | None = None,
+	):
         """
         Initialize Stage 2 filter.
 
