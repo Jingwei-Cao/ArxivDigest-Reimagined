@@ -104,6 +104,7 @@ async def async_main(config: dict) -> None:
         stage1_temperature=stage1_config.get("temperature", 0.0),
         stage2_threshold=stage2_config.get("threshold", 0.7),
         stage2_temperature=stage2_config.get("temperature", 0.1),
+        stage2_max_chars=stage2_config.get("max_text_chars", 40000),
         stage2_custom_fields=stage2_config.get("custom_fields", []),
         stage3_threshold=stage3_config.get("threshold", 0.8),
         stage3_temperature=stage3_config.get("temperature", 0.3),
