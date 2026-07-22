@@ -108,23 +108,59 @@ class Stage3Filter:
 
         # Process uncached papers
         if uncached_papers:
-            # Fetch HTML for all papers
-            paper_ids = [paper["id"] for paper in uncached_papers]
-            html_results = await self.html_crawler.fetch_batch(paper_ids)
-
-            # Extract text from HTML
+            # Reuse HTML fetched by Stage 2 whenever available.
+            papers_with_cached_html = [
+                paper
+                for paper in uncached_papers
+                if paper.get("_full_html")
+            ]
+            
+            papers_needing_fetch = [
+                paper
+                for paper in uncached_papers
+                if not paper.get("_full_html")
+            ]
+            
+            logger.info(
+                f"Stage 3: reusing HTML for {len(papers_with_cached_html)} papers, "
+                f"fetching {len(papers_needing_fetch)} papers"
+            )
+            
+            # Only fetch papers whose HTML is not already cached in memory.
+            if papers_needing_fetch:
+                paper_ids = [paper["id"] for paper in papers_needing_fetch]
+                html_results = await self.html_crawler.fetch_batch(paper_ids)
+            else:
+                html_results = {}
+            
+            # Extract text from cached or newly fetched HTML.
             papers_with_text = []
+            
             for paper in uncached_papers:
-                html = html_results.get(paper["id"])
+                html = paper.get("_full_html")
+            
+                if not html:
+                    html = html_results.get(paper["id"])
+            
+                    if html:
+                        # Also cache HTML fetched directly by Stage 3.
+                        paper["_full_html"] = html
+            
                 if html:
-                    full_text = self._extract_text_from_html(html, paper["id"])
+                    full_text = self._extract_text_from_html(
+                        html,
+                        paper["id"],
+                    )
                     papers_with_text.append((paper, full_text))
                 else:
-                    # Add to results with None
+                    logger.warning(
+                        f"Stage 3: HTML unavailable for paper {paper['id']}"
+                    )
                     cached_results.append((paper, None))
-
+                    
             logger.info(
-                f"Stage 3: Successfully extracted text from {len(papers_with_text)}/{len(uncached_papers)} papers"
+                f"Stage 3: Successfully extracted text from "
+                f"{len(papers_with_text)}/{len(uncached_papers)} papers"
             )
 
             # Evaluate papers with text
