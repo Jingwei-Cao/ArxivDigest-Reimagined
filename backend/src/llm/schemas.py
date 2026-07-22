@@ -23,13 +23,13 @@ class Stage1Result(FilterResult):
 
 
 class Stage2Result(FilterResult):
-    """Result from Stage 2 filtering with abstract-level custom fields."""
+    """Result from Stage 2 filtering using full paper content."""
 
     custom_fields: dict[str, str] = Field(
         default_factory=dict,
         description=(
-            "User-defined custom fields extracted only from the paper title, "
-            "authors, categories, and abstract"
+            "User-defined custom fields extracted from the paper metadata, "
+            "abstract, and full paper content"
         ),
     )
 
