@@ -23,10 +23,15 @@ class Stage1Result(FilterResult):
 
 
 class Stage2Result(FilterResult):
-    """Result from Stage 2 filtering (Title + Authors + Categories + Abstract)."""
+    """Result from Stage 2 filtering with abstract-level custom fields."""
 
-    # Stage 2 adds abstract-level reasoning
-    pass
+    custom_fields: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            "User-defined custom fields extracted only from the paper title, "
+            "authors, categories, and abstract"
+        ),
+    )
 
 
 class Stage3Result(FilterResult):
