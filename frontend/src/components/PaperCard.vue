@@ -23,15 +23,23 @@ const stageBadges = computed(() => {
     return badges;
 });
 
-// Main result to display
+// Display the result from the highest stage actually passed.
 const mainResult = computed<BaseStageResult | Stage3Result>(() => {
-    if (props.paper.stage3) return props.paper.stage3;
-    if (props.paper.stage2) return props.paper.stage2;
+    if (props.paper.max_stage >= 3 && props.paper.stage3) {
+        return props.paper.stage3;
+    }
+
+    if (props.paper.max_stage >= 2 && props.paper.stage2) {
+        return props.paper.stage2;
+    }
+
     return props.paper.stage1;
 });
 
-// Check if stage 3
-const isStage3 = computed(() => props.paper.stage3 !== null);
+// Only treat the paper as Stage 3 when it actually passed Stage 3.
+const isStage3 = computed(
+    () => props.paper.max_stage >= 3 && props.paper.stage3 !== null,
+);
 
 // Check if has abstract (stage 2+)
 const hasAbstract = computed(() => props.paper.stage2 !== null || props.paper.stage3 !== null);
@@ -41,7 +49,7 @@ function toggleAbstract() {
     abstractExpanded.value = !abstractExpanded.value;
 }
 
-// Custom fields for stage 3
+// Display custom fields from the selected stage
 const customFields = computed(() => {
     if (mainResult.value.custom_fields) {
         return Object.entries(mainResult.value.custom_fields);
