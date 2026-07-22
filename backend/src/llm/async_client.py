@@ -205,88 +205,88 @@ Is this paper potentially relevant? Provide a quick assessment."""
         ]
 
     def build_stage2_messages(
-    self,
-    title: str,
-    authors: list[str],
-    categories: list[str],
-    abstract: str,
-    user_prompt: str,
-    full_text: str,
-    custom_fields: list[dict[str, str]] | None = None,
-) -> list[dict[str, str]]:
-    """
-    Build messages for Stage 2 filtering using full paper content.
+        self,
+        title: str,
+        authors: list[str],
+        categories: list[str],
+        abstract: str,
+        user_prompt: str,
+        full_text: str,
+        custom_fields: list[dict[str, str]] | None = None,
+    ) -> list[dict[str, str]]:
+        """
+        Build messages for Stage 2 filtering using full paper content.
 
-    Args:
-        title: Paper title
-        authors: List of author names
-        categories: arXiv categories
-        abstract: Paper abstract
-        user_prompt: User's filtering criteria
-        full_text: Cleaned full paper content
-        custom_fields: User-defined fields to extract
+        Args:
+            title: Paper title
+            authors: List of author names
+            categories: arXiv categories
+            abstract: Paper abstract
+            user_prompt: User's filtering criteria
+            full_text: Cleaned full paper content
+            custom_fields: User-defined fields to extract
 
-    Returns:
-        List of message dictionaries
-    """
-    system_message = """You are an expert at evaluating academic papers.
-Your task is to determine whether a paper is relevant to the user's interests
-using its metadata, abstract, and full paper content.
+        Returns:
+            List of message dictionaries
+        """
+        system_message = """You are an expert at evaluating academic papers.
+    Your task is to determine whether a paper is relevant to the user's interests
+    using its metadata, abstract, and full paper content.
 
-Use the full paper content when extracting technical information, mathematical
-problem formulations, assumptions, definitions, algorithms, and results.
+    Use the full paper content when extracting technical information, mathematical
+    problem formulations, assumptions, definitions, algorithms, and results.
 
-Only report information supported by the paper. Do not invent missing equations,
-assumptions, methods, or conclusions.
+    Only report information supported by the paper. Do not invent missing equations,
+    assumptions, methods, or conclusions.
 
-Provide a relevance score, concise reasoning, and all requested custom fields."""
+    Provide a relevance score, concise reasoning, and all requested custom fields."""
 
-    custom_fields_prompt = ""
+        custom_fields_prompt = ""
 
-    if custom_fields:
-        fields_list = []
+        if custom_fields:
+            fields_list = []
 
-        for field in custom_fields:
-            field_name = field.get("name", "")
-            field_desc = field.get("description", "")
+            for field in custom_fields:
+                field_name = field.get("name", "")
+                field_desc = field.get("description", "")
 
-            if field_name:
-                fields_list.append(
-                    f"- {field_name}: {field_desc}"
+                if field_name:
+                    fields_list.append(
+                        f"- {field_name}: {field_desc}"
+                    )    
+
+            if fields_list:
+                custom_fields_prompt = (
+                    "\n\nExtract the following custom fields using the full "
+                    "paper content:\n"
+                    + "\n".join(fields_list)
+                    + "\n\nUse the title and abstract as context, but rely on "
+                    "the full paper when the required information appears in "
+                    "the main text. Do not infer or invent information that is "
+                    "not supported by the paper."
                 )
 
-        if fields_list:
-            custom_fields_prompt = (
-                "\n\nExtract the following custom fields using the full "
-                "paper content:\n"
-                + "\n".join(fields_list)
-                + "\n\nUse the title and abstract as context, but rely on "
-                "the full paper when the required information appears in "
-                "the main text. Do not infer or invent information that is "
-                "not supported by the paper."
-            )
+        user_message = f"""User's interests:
+    {user_prompt}
 
-    user_message = f"""User's interests:
-{user_prompt}
+    Paper Information:
+    - Title: {title}
+    - Authors: {", ".join(authors)}
+    - Categories: {", ".join(categories)}
+    - Abstract: {abstract}
 
-Paper Information:
-- Title: {title}
-- Authors: {", ".join(authors)}
-- Categories: {", ".join(categories)}
-- Abstract: {abstract}
+    Full Paper Content:
+    {full_text}
 
-Full Paper Content:
-{full_text}
+    Evaluate the paper's relevance to the user's interests using the full paper
+    content. Extract the requested custom fields from the paper.
+    {custom_fields_prompt}
+    """
 
-Evaluate the paper's relevance to the user's interests using the full paper
-content. Extract the requested custom fields from the paper.
-{custom_fields_prompt}
-"""
-
-    return [
-        {"role": "system", "content": system_message},
-        {"role": "user", "content": user_message},
-    ]
+        return [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": user_message},
+        ]
 
     def build_stage3_messages(
         self,
