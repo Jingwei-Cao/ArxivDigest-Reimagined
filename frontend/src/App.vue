@@ -28,7 +28,6 @@ const {
     <div v-else-if="digestData" class="container">
         <header>
             <h1>
-                🎓
                 {{ digestData.metadata.title }}
             </h1>
             <div class="header-controls">
