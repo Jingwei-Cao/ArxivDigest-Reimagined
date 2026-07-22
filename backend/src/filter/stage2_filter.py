@@ -20,6 +20,7 @@ class Stage2Filter:
         cache_manager: CacheManager,
         threshold: float = 0.7,
         temperature: float = 0.1,
+        custom_fields: list[dict[str, str]] | None = None,
         config_hash: str | None = None,
     ):
         """
@@ -37,6 +38,7 @@ class Stage2Filter:
         self.threshold = threshold
         self.temperature = temperature
         self.config_hash = config_hash
+        self.custom_fields = custom_fields or []
 
         logger.info(f"Stage2Filter initialized: threshold={threshold}, temperature={temperature}")
 
@@ -84,6 +86,7 @@ class Stage2Filter:
                     categories=paper["categories"],
                     abstract=paper["abstract"],
                     user_prompt=user_prompt,
+                    custom_fields=self.custom_fields,
                 )
                 for paper in uncached_papers
             ]
