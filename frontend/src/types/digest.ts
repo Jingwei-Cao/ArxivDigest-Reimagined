@@ -24,6 +24,7 @@ const BaseStageResultSchema = z.object({
     usage: UsageSchema,
     estimated_cost: z.number().nullable(),
     estimated_cost_currency: z.string().nullable(),
+    custom_fields: z.record(z.string()).optional(),
 });
 
 // Stage 3 result schema (extends base with additional fields)
