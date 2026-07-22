@@ -211,6 +211,7 @@ Is this paper potentially relevant? Provide a quick assessment."""
         categories: list[str],
         abstract: str,
         user_prompt: str,
+        full_text: str,
         custom_fields: list[dict[str, str]] | None = None,
     ) -> list[dict[str, str]]:
         """
@@ -257,8 +258,12 @@ Paper Information:
 - Authors: {", ".join(authors)}
 - Categories: {", ".join(categories)}
 - Abstract: {abstract}
+Full Paper Content:
+{full_text}
 
 Evaluate this paper's relevance to the user's interests.
+
+Extract the requested custom fields using the full paper content.
 {custom_fields_prompt}"""
         return [
             {"role": "system", "content": system_message},
