@@ -93,21 +93,24 @@ class Stage2Filter:
 		
 		    for paper in uncached_papers:
 		        html = html_results.get(paper["id"])
-		
-		        if html:
-		            cleaner = ArxivHtmlCleaner(
-		                max_chars=self.max_text_chars,
-		                arxiv_id=paper["id"],
-		            )
-		            full_text = cleaner.clean(html)
-		        else:
-		            # Fall back to abstract when arXiv HTML is unavailable
-		            logger.warning(
-		                f"Stage 2: HTML unavailable for {paper['id']}, "
-		                "falling back to abstract"
-		            )
-		            full_text = paper["abstract"]
-		
+
+				if html:
+				    # Cache raw HTML on the paper object for reuse by Stage 3.
+				    # JSONExporter only exports known paper fields, so this will not
+				    # be included in digest.json.
+				    paper["_full_html"] = html
+				
+				    cleaner = ArxivHtmlCleaner(
+				        max_chars=self.max_text_chars,
+				        arxiv_id=paper["id"],
+				    )
+				    full_text = cleaner.clean(html)
+				else:
+				    logger.warning(
+				        f"Stage 2: HTML unavailable for {paper['id']}, "
+				        "falling back to abstract"
+				    )
+				    full_text = paper["abstract"]
 		        papers_with_text.append((paper, full_text))
 		
 		    # 3. Build Stage 2 LLM messages using full paper text
