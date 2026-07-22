@@ -29,6 +29,7 @@ class FilterPipeline:
         stage1_temperature: float = 0.0,
         stage2_threshold: float = 0.7,
         stage2_temperature: float = 0.1,
+        stage2_custom_fields: list[dict[str, str]] | None = None,
         stage3_threshold: float = 0.8,
         stage3_temperature: float = 0.3,
         stage3_max_chars: int = 8000,
@@ -71,6 +72,7 @@ class FilterPipeline:
             cache_manager=cache_manager,
             threshold=stage2_threshold,
             temperature=stage2_temperature,
+            custom_fields=stage2_custom_fields,
             config_hash=config_hash,
         )
 
