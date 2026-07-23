@@ -2,8 +2,7 @@ name: Generate Daily Digest
 
 on:
   schedule:
-    - cron: "50 9 * * 1-5"
-      timezone: "Asia/Shanghai"
+    - cron: "0 0 * * 1-5"
   workflow_dispatch: # Allow manual trigger
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
