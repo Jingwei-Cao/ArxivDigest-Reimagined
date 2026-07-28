@@ -288,7 +288,7 @@ button {
     color: #1e293b;
 }
 .danger {
-    background: #ED8D5A;
+    background: #BFDFD2;
     color: #1e293b;
 }
 .hidden-list {
