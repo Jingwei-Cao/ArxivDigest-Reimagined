@@ -129,14 +129,6 @@ onBeforeUnmount(() => {
                         props.pendingTimestamp ? "Hide local history item" : "Manage local history"
                     }}
                 </h2>
-                <button
-                    type="button"
-                    class="close-button"
-                    aria-label="Close local history"
-                    @click="close"
-                >
-                    ×
-                </button>
             </header>
             <p v-if="props.error" class="form-error" role="alert">{{ props.error }}</p>
 
