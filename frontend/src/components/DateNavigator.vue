@@ -308,13 +308,15 @@ function hideDate(timestamp: string) {
 .hide-date-btn {
     gap: 0.25rem;
     padding: 0.55rem 0.75rem;
-    color: #b91c1c;
+    border-radius: 0.375rem;
+    background: #ED8D5A;
+    color: #1e293b;
 }
 
 .hide-date-btn:hover,
 .hide-date-btn:focus-visible {
-    background: #fee2e2;
-    color: #991b1b;
+    background: #e47a44;
+    color: #1e293b;
 }
 
 .truncate {
