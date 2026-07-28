@@ -309,7 +309,7 @@ function hideDate(timestamp: string) {
     gap: 0.25rem;
     padding: 0.55rem 0.75rem;
     border-radius: 0.375rem;
-    background: #ED8D5A;
+    background: #BFDFD2;
     color: #1e293b;
 }
 
