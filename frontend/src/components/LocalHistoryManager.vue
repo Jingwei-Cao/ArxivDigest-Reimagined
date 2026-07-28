@@ -241,15 +241,13 @@ onBeforeUnmount(() => {
     gap: 0.75rem;
 }
 
+.local-history-header {
+    justify-content: center;
+}
+
 .local-history-header h2 {
     margin: 0;
     font-size: 1.2rem;
-}
-.close-button {
-    border: 0;
-    background: transparent;
-    font-size: 1.5rem;
-    cursor: pointer;
 }
 form {
     display: grid;
@@ -290,8 +288,8 @@ button {
     color: #1e293b;
 }
 .danger {
-    background: #b91c1c;
-    color: #fff;
+    background: #ED8D5A;
+    color: #1e293b;
 }
 .hidden-list {
     display: grid;
@@ -307,8 +305,8 @@ button {
     padding-bottom: 0.5rem;
 }
 .hidden-list button {
-    background: #dbeafe;
-    color: #1d4ed8;
+    background: #BFDFD2;
+    color: #1e293b;
 }
 .reset-confirmation {
     display: grid;
