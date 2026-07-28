@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import { Listbox, ListboxButton, ListboxOptions, ListboxOption } from "@headlessui/vue";
+import { computed, ref } from "vue";
 import {
     ChevronLeftIcon,
     ChevronRightIcon,
     CalendarDaysIcon,
     ChevronUpDownIcon,
     CheckIcon,
+    TrashIcon,
 } from "@heroicons/vue/20/solid";
 
 const props = defineProps<{
@@ -16,7 +16,10 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     (e: "change", date: string): void;
+    (e: "hide", timestamp: string): void;
+    (e: "manage-local-history"): void;
 }>();
+const dateMenu = ref<HTMLDetailsElement | null>(null);
 
 // Format date for display (YYYY-MM-DD HH:MM:SS)
 const formatDate = (dateStr: string) => {
@@ -30,10 +33,9 @@ const formatDate = (dateStr: string) => {
     return dateStr;
 };
 
-// Combine current date into the list if not present, and sort
+// useDigest guarantees that the current date is one of the available dates.
 const allDates = computed(() => {
-    const dates = new Set([...props.availableDates, props.currentDate]);
-    return Array.from(dates).sort((a, b) => b.localeCompare(a));
+    return [...props.availableDates].sort((a, b) => b.localeCompare(a));
 });
 
 const currentIndex = computed(() => {
@@ -61,6 +63,16 @@ const nextDate = computed(() => {
 function navigate(date: string | null) {
     if (date) {
         emit("change", date);
+        if (dateMenu.value) {
+            dateMenu.value.open = false;
+        }
+    }
+}
+
+function hideDate(timestamp: string) {
+    emit("hide", timestamp);
+    if (dateMenu.value) {
+        dateMenu.value.open = false;
     }
 }
 </script>
@@ -77,59 +89,50 @@ function navigate(date: string | null) {
             <ChevronLeftIcon class="icon" />
         </button>
 
-        <!-- Date Selector -->
-        <Listbox
-            :model-value="currentDate"
-            @update:model-value="(date) => navigate(date as string)"
-            as="div"
-            class="date-listbox"
-        >
-            <div class="relative">
-                <ListboxButton class="listbox-btn">
-                    <CalendarDaysIcon class="icon-sm text-white" />
-                    <span class="date-text">{{ formatDate(currentDate) }}</span>
-                    <ChevronUpDownIcon class="icon-xs text-secondary" />
-                </ListboxButton>
+        <!-- Date selector with independent, keyboard-reachable row actions. -->
+        <details ref="dateMenu" class="date-listbox">
+            <summary class="listbox-btn">
+                <CalendarDaysIcon class="icon-sm text-white" />
+                <span class="date-text">{{ formatDate(currentDate) }}</span>
+                <ChevronUpDownIcon class="icon-xs text-secondary" />
+            </summary>
 
-                <transition
-                    enter-active-class="transition duration-100 ease-out"
-                    enter-from-class="transform scale-95 opacity-0"
-                    enter-to-class="transform scale-100 opacity-100"
-                    leave-active-class="transition duration-75 ease-in"
-                    leave-from-class="transform scale-100 opacity-100"
-                    leave-to-class="transform scale-95 opacity-0"
-                >
-                    <ListboxOptions class="listbox-options">
-                        <ListboxOption
-                            v-for="date in allDates"
-                            :key="date"
-                            :value="date"
-                            as="template"
-                            v-slot="{ active, selected }"
+            <div class="listbox-options">
+                <ul class="date-action-list">
+                    <li
+                        v-for="date in allDates"
+                        :key="date"
+                        class="listbox-option"
+                        :class="{ 'bg-accent-light': date === currentDate }"
+                    >
+                        <button
+                            type="button"
+                            class="select-date-btn"
+                            :class="date === currentDate ? 'font-medium' : 'font-normal'"
+                            :aria-current="date === currentDate ? 'true' : undefined"
+                            :aria-label="`View ${formatDate(date)}`"
+                            @click="navigate(date)"
                         >
-                            <li
-                                :class="[
-                                    'listbox-option',
-                                    active ? 'bg-accent-light text-accent' : 'text-primary',
-                                ]"
-                            >
-                                <span
-                                    :class="[
-                                        'block truncate',
-                                        selected ? 'font-medium' : 'font-normal',
-                                    ]"
-                                >
-                                    {{ formatDate(date) }}
-                                </span>
-                                <span v-if="selected" class="check-icon-container">
-                                    <CheckIcon class="icon-xs" aria-hidden="true" />
-                                </span>
-                            </li>
-                        </ListboxOption>
-                    </ListboxOptions>
-                </transition>
+                            <span class="truncate">{{ formatDate(date) }}</span>
+                            <CheckIcon
+                                v-if="date === currentDate"
+                                class="icon-xs check-icon"
+                                aria-hidden="true"
+                            />
+                        </button>
+                        <button
+                            type="button"
+                            class="hide-date-btn"
+                            :aria-label="`Hide ${formatDate(date)}`"
+                            @click="hideDate(date)"
+                        >
+                            <TrashIcon class="icon-xs" aria-hidden="true" />
+                            <span>Hide</span>
+                        </button>
+                    </li>
+                </ul>
             </div>
-        </Listbox>
+        </details>
 
         <!-- Next Button -->
         <button
@@ -139,6 +142,10 @@ function navigate(date: string | null) {
             title="Next Digest"
         >
             <ChevronRightIcon class="icon" />
+        </button>
+
+        <button class="manage-history-btn" type="button" @click="emit('manage-local-history')">
+            Manage local history
         </button>
     </div>
 </template>
@@ -179,10 +186,6 @@ function navigate(date: string | null) {
     min-width: 180px;
 }
 
-.relative {
-    position: relative;
-}
-
 .listbox-btn {
     position: relative;
     width: 100%;
@@ -200,9 +203,15 @@ function navigate(date: string | null) {
     font-size: 0.95rem;
     color: #fff;
     transition: all 0.2s;
+    list-style: none;
 }
 
-.listbox-btn:hover {
+.listbox-btn::-webkit-details-marker {
+    display: none;
+}
+
+.listbox-btn:hover,
+.listbox-btn:focus-visible {
     background: rgba(255, 255, 255, 0.1);
 }
 
@@ -220,11 +229,10 @@ function navigate(date: string | null) {
     position: absolute;
     margin-top: 0.5rem;
     max-height: 15rem;
-    width: 100%;
+    min-width: 18rem;
     overflow: auto;
     border-radius: 0.5rem;
     background: var(--white);
-    padding: 0.25rem 0;
     font-size: 0.9rem;
     box-shadow:
         0 10px 15px -3px rgba(0, 0, 0, 0.1),
@@ -233,16 +241,15 @@ function navigate(date: string | null) {
     color: var(--text-color);
 }
 
-.listbox-options:focus {
-    outline: none;
+.date-action-list {
+    list-style: none;
+    margin: 0;
+    padding: 0.25rem 0;
 }
 
 .listbox-option {
-    position: relative;
-    cursor: pointer;
-    user-select: none;
-    padding: 0.5rem 1rem;
-    padding-right: 2rem;
+    display: flex;
+    align-items: stretch;
     color: var(--text-color);
     transition: background-color 0.1s;
 }
@@ -251,16 +258,8 @@ function navigate(date: string | null) {
     background-color: #eff6ff; /* blue-50 */
 }
 
-.text-accent {
-    color: var(--accent-color);
-}
-
 .text-white {
     color: #ffffff;
-}
-
-.text-primary {
-    color: var(--primary-color);
 }
 
 .text-secondary {
@@ -275,15 +274,70 @@ function navigate(date: string | null) {
     font-weight: 400;
 }
 
-.check-icon-container {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    right: 0;
+.select-date-btn,
+.hide-date-btn {
     display: flex;
     align-items: center;
-    padding-right: 0.75rem;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+}
+
+.select-date-btn {
+    flex: 1;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-width: 0;
+    padding: 0.55rem 0.75rem;
+    text-align: left;
+}
+
+.select-date-btn:hover,
+.select-date-btn:focus-visible {
+    background: #eff6ff;
     color: var(--accent-color);
+}
+
+.check-icon {
+    flex: none;
+    color: var(--accent-color);
+}
+
+.hide-date-btn {
+    gap: 0.25rem;
+    padding: 0.55rem 0.75rem;
+    color: #b91c1c;
+}
+
+.hide-date-btn:hover,
+.hide-date-btn:focus-visible {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.manage-history-btn {
+    border: 0;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.manage-history-btn:hover,
+.manage-history-btn:focus-visible {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
 }
 
 .icon {
