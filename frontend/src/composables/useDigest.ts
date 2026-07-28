@@ -1,5 +1,13 @@
 import { ref, computed, watch, onMounted } from "vue";
 import { loadDigestData, loadHistoryIndex } from "@/utils/digestLoader";
+import {
+    configureLocalHistoryPassword,
+    hideTimestamp,
+    loadLocalHistoryPreferences,
+    resetLocalHistoryPreferences,
+    restoreTimestamp,
+    verifyLocalHistoryPassword,
+} from "@/utils/localHistoryPreferences";
 import type { DigestData, Paper } from "@/types/digest";
 
 export function useDigest() {
@@ -14,6 +22,24 @@ export function useDigest() {
     const historyDates = ref<string[]>([]);
     const selectedDate = ref<string>(""); // Empty string means "Latest"
     const latestDateString = ref<string>("");
+    const hiddenTimestamps = ref(loadLocalHistoryPreferences().hiddenTimestamps);
+    const pendingHiddenTimestamp = ref<string | null>(null);
+    const isHistoryManagerOpen = ref(false);
+    const hasLocalPassword = ref(loadLocalHistoryPreferences().password !== null);
+    const visibleDates = computed(() =>
+        historyDates.value.filter((timestamp) => !hiddenTimestamps.value.includes(timestamp)),
+    );
+    let loadVersion = 0;
+    let hideOperationVersion = 0;
+    const storageError = "Browser storage is unavailable; no local history changes were saved";
+
+    watch(
+        pendingHiddenTimestamp,
+        () => {
+            hideOperationVersion++;
+        },
+        { flush: "sync" },
+    );
 
     // Helper to format date
     const formatDateFromTimestamp = (timestamp: string) => {
@@ -29,10 +55,18 @@ export function useDigest() {
 
     // Load data
     const loadData = async (date?: string) => {
+        const requestVersion = ++loadVersion;
         loading.value = true;
         error.value = null;
         try {
             const data = await loadDigestData(date);
+            if (
+                requestVersion !== loadVersion ||
+                (date !== undefined &&
+                    (selectedDate.value !== date || !visibleDates.value.includes(date)))
+            ) {
+                return;
+            }
             digestData.value = data;
 
             // Reset stage selection logic when data changes
@@ -46,17 +80,23 @@ export function useDigest() {
                 currentStage.value = "all";
             }
         } catch (e) {
-            error.value = e instanceof Error ? e.message : "Failed to load digest data";
+            if (requestVersion === loadVersion) {
+                error.value = e instanceof Error ? e.message : "Failed to load digest data";
+            }
         } finally {
-            loading.value = false;
+            if (requestVersion === loadVersion) {
+                loading.value = false;
+            }
         }
     };
 
     // Handle date change from navigator
     const handleDateChange = (newDate: string) => {
-        if (historyDates.value.length > 0) {
+        if (visibleDates.value.length > 0) {
             // If history exists, we rely on it.
-            selectedDate.value = newDate;
+            selectedDate.value = visibleDates.value.includes(newDate)
+                ? newDate
+                : (visibleDates.value[0] ?? "");
         } else {
             // Fallback mode: if no history, we might be using digest.json
             if (newDate === latestDateString.value) {
@@ -69,6 +109,12 @@ export function useDigest() {
 
     // Watch for date changes
     watch(selectedDate, (newDate) => {
+        if (historyDates.value.length > 0 && visibleDates.value.length === 0) {
+            return;
+        }
+        if (newDate && !visibleDates.value.includes(newDate)) {
+            return;
+        }
         loadData(newDate || undefined);
     });
 
@@ -79,14 +125,14 @@ export function useDigest() {
         // Sort dates descending (newest first)
         historyDates.value.sort((a, b) => b.localeCompare(a));
 
-        if (historyDates.value.length > 0) {
+        if (visibleDates.value.length > 0) {
             // If history exists, use the latest history file as the source of truth
-            const latest = historyDates.value[0];
+            const latest = visibleDates.value[0];
             if (latest) {
                 selectedDate.value = latest;
                 latestDateString.value = latest;
             }
-        } else {
+        } else if (historyDates.value.length === 0) {
             // Fallback: Load digest.json if no history is available
             await loadData();
             if (digestData.value) {
@@ -94,6 +140,9 @@ export function useDigest() {
                     digestData.value.metadata.timestamp,
                 );
             }
+        } else {
+            // Indexed records exist, but this browser has hidden every one of them.
+            loading.value = false;
         }
     });
 
@@ -112,10 +161,10 @@ export function useDigest() {
 
     // All available dates including the latest one
     const allAvailableDates = computed(() => {
-        const dates = new Set([...historyDates.value]);
-        if (latestDateString.value) {
+        const dates = new Set([...visibleDates.value]);
+        if (historyDates.value.length === 0 && latestDateString.value) {
             dates.add(latestDateString.value);
-        } else if (currentDigestDate.value) {
+        } else if (historyDates.value.length === 0 && currentDigestDate.value) {
             // Fallback if latestDateString not yet set but we have data
             dates.add(currentDigestDate.value);
         }
@@ -154,6 +203,92 @@ export function useDigest() {
         selectedPaper.value = null;
     }
 
+    function requestHideTimestamp(timestamp: string) {
+        if (!visibleDates.value.includes(timestamp)) {
+            return;
+        }
+        pendingHiddenTimestamp.value = timestamp;
+    }
+
+    async function confirmHideTimestamp(password: string, passwordConfirmation?: string) {
+        const timestamp = pendingHiddenTimestamp.value;
+        if (!timestamp) {
+            return { ok: false, error: "No timestamp selected" };
+        }
+        const operationVersion = hideOperationVersion;
+        const operationIsCurrent = () =>
+            operationVersion === hideOperationVersion && pendingHiddenTimestamp.value === timestamp;
+
+        if (!hasLocalPassword.value) {
+            if (!password || password !== passwordConfirmation) {
+                return { ok: false, error: "Passwords do not match" };
+            }
+            const configured = await configureLocalHistoryPassword(password, operationIsCurrent);
+            if (!operationIsCurrent()) {
+                return { ok: false, error: "Hide operation was cancelled" };
+            }
+            if (!configured) {
+                return { ok: false, error: storageError };
+            }
+            hasLocalPassword.value = true;
+        } else {
+            const verified = await verifyLocalHistoryPassword(password);
+            if (!operationIsCurrent()) {
+                return { ok: false, error: "Hide operation was cancelled" };
+            }
+            if (!verified) {
+                return { ok: false, error: "Incorrect password" };
+            }
+        }
+
+        if (!operationIsCurrent()) {
+            return { ok: false, error: "Hide operation was cancelled" };
+        }
+        if (!hideTimestamp(timestamp)) {
+            return { ok: false, error: storageError };
+        }
+        if (selectedDate.value === timestamp) {
+            loadVersion++;
+        }
+        hiddenTimestamps.value = loadLocalHistoryPreferences().hiddenTimestamps;
+        pendingHiddenTimestamp.value = null;
+
+        if (selectedDate.value === timestamp) {
+            const nextVisibleDate = visibleDates.value[0] ?? "";
+            selectedDate.value = nextVisibleDate;
+            if (!nextVisibleDate) {
+                digestData.value = null;
+                loading.value = false;
+            }
+        }
+
+        return { ok: true };
+    }
+
+    function restoreHiddenTimestamp(timestamp: string) {
+        if (!restoreTimestamp(timestamp)) {
+            return false;
+        }
+        hiddenTimestamps.value = loadLocalHistoryPreferences().hiddenTimestamps;
+        if (!selectedDate.value) {
+            selectedDate.value = visibleDates.value[0] ?? "";
+        }
+        return true;
+    }
+
+    function resetLocalHistory() {
+        pendingHiddenTimestamp.value = null;
+        if (!resetLocalHistoryPreferences()) {
+            return false;
+        }
+        hiddenTimestamps.value = [];
+        hasLocalPassword.value = false;
+        if (!selectedDate.value) {
+            selectedDate.value = visibleDates.value[0] ?? "";
+        }
+        return true;
+    }
+
     return {
         digestData,
         loading,
@@ -162,13 +297,23 @@ export function useDigest() {
         selectedPaper,
         showModal,
         historyDates,
+        visibleDates,
+        hiddenTimestamps,
         selectedDate,
+        pendingHiddenTimestamp,
+        isHistoryManagerOpen,
+        hasLocalPassword,
         currentDigestDate,
         allAvailableDates,
         filteredPapers,
         stageName,
         handleDateChange,
+        requestHideTimestamp,
+        confirmHideTimestamp,
+        restoreHiddenTimestamp,
+        resetLocalHistory,
         showConversation,
         closeModal,
     };
 }
+
