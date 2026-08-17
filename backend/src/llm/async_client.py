@@ -105,7 +105,7 @@ class AsyncLLMClient:
                     messages=messages,  # type: ignore
                     response_model=response_model,
                     temperature=effective_temp,
-                    
+                    extra_body={"thinking": {"type": "disabled"}},
                     **kwargs,
                 )
 
