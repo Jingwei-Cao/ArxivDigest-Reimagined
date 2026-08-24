@@ -13,6 +13,11 @@ const emit = defineEmits<{
 }>();
 
 const abstractExpanded = ref(false);
+const customFieldPriority = new Map([
+    ["research_problem", 0],
+    ["core_algorithm", 1],
+    ["key_innovations", 2],
+]);  
 
 // Stage badges
 const stageBadges = computed(() => {
@@ -52,7 +57,11 @@ function toggleAbstract() {
 // Display custom fields from the selected stage
 const customFields = computed(() => {
     if (mainResult.value.custom_fields) {
-        return Object.entries(mainResult.value.custom_fields);
+        return Object.entries(mainResult.value.custom_fields).sort(
+            ([left], [right]) =>
+                (customFieldPriority.get(left) ?? customFieldPriority.size) -
+                (customFieldPriority.get(right) ?? customFieldPriority.size),
+        );
     }
 
     return [];
